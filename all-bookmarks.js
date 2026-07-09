@@ -1,0 +1,375 @@
+/**
+ * All Bookmarks page logic
+ * 
+ * Reads Chrome's native bookmarks tree, cross-references with
+ * notes/tasks stored in chrome.storage.local under "bnt_data".
+ */
+
+const STORAGE_KEY = 'bnt_data';
+
+// DOM refs
+const $grid         = document.getElementById('bookmark-grid');
+const $emptyState   = document.getElementById('empty-state');
+const $emptyHeading = document.getElementById('empty-heading');
+const $emptyDesc    = document.getElementById('empty-desc');
+const $total        = document.getElementById('bookmark-total');
+const $searchInput  = document.getElementById('search-input');
+const $filterBtns   = document.querySelectorAll('.filter-btn');
+
+// Modal refs
+const $overlay        = document.getElementById('modal-overlay');
+const $modalClose     = document.getElementById('modal-close');
+const $modalTitle     = document.getElementById('modal-page-title');
+const $modalUrl       = document.getElementById('modal-page-url');
+const $modalFavicon   = document.getElementById('modal-favicon');
+const $modalNotes     = document.getElementById('modal-notes');
+const $modalTasks     = document.getElementById('modal-task-list');
+const $modalTaskInput = document.getElementById('modal-task-input');
+const $modalDelete    = document.getElementById('modal-delete');
+const $modalSave      = document.getElementById('modal-save');
+
+let nativeBookmarks = [];  // Flat list of { id, title, url, dateAdded }
+let pageData = {};          // Notes/tasks from storage
+let activeFilter = 'all';
+let searchQuery = '';
+let editingUrl = null;
+let editingBookmarkId = null;
+let editingData = null;
+
+// ---- Init ----
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadPageData();
+  await loadNativeBookmarks();
+  renderGrid();
+  bindEvents();
+});
+
+// ---- Storage ----
+async function loadPageData() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(STORAGE_KEY, result => {
+      pageData = result[STORAGE_KEY] || {};
+      resolve();
+    });
+  });
+}
+
+async function savePageData() {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ [STORAGE_KEY]: pageData }, resolve);
+  });
+}
+
+// ---- Native Bookmarks ----
+async function loadNativeBookmarks() {
+  return new Promise(resolve => {
+    chrome.bookmarks.getTree(tree => {
+      nativeBookmarks = [];
+      flattenBookmarks(tree);
+      resolve();
+    });
+  });
+}
+
+function flattenBookmarks(nodes) {
+  for (const node of nodes) {
+    if (node.url) {
+      nativeBookmarks.push({
+        id: node.id,
+        title: node.title || 'Untitled',
+        url: node.url,
+        dateAdded: node.dateAdded || 0
+      });
+    }
+    if (node.children) {
+      flattenBookmarks(node.children);
+    }
+  }
+}
+
+// ---- Merge data: native bookmarks + notes/tasks ----
+function getMergedBookmarks() {
+  return nativeBookmarks.map(bm => {
+    const data = pageData[bm.url] || { notes: '', tasks: [] };
+    return {
+      id: bm.id,
+      title: bm.title,
+      url: bm.url,
+      dateAdded: bm.dateAdded,
+      notes: data.notes || '',
+      tasks: data.tasks || [],
+      updatedAt: data.updatedAt || bm.dateAdded
+    };
+  });
+}
+
+// ---- Filtering ----
+function getFilteredBookmarks() {
+  let entries = getMergedBookmarks();
+
+  // Search
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    entries = entries.filter(bm => {
+      const inTitle = bm.title.toLowerCase().includes(q);
+      const inUrl = bm.url.toLowerCase().includes(q);
+      const inNotes = bm.notes.toLowerCase().includes(q);
+      const inTasks = bm.tasks.some(t => t.text.toLowerCase().includes(q));
+      return inTitle || inUrl || inNotes || inTasks;
+    });
+  }
+
+  // Filter
+  if (activeFilter === 'has-notes') {
+    entries = entries.filter(bm => bm.notes.trim().length > 0);
+  } else if (activeFilter === 'has-tasks') {
+    entries = entries.filter(bm => bm.tasks.length > 0);
+  } else if (activeFilter === 'has-pending') {
+    entries = entries.filter(bm => bm.tasks.some(t => !t.done));
+  }
+
+  // Sort by most recently updated/added
+  entries.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+  return entries;
+}
+
+// ---- Render ----
+function renderGrid() {
+  const entries = getFilteredBookmarks();
+  const totalAll = nativeBookmarks.length;
+
+  $total.textContent = `${totalAll} bookmark${totalAll !== 1 ? 's' : ''}`;
+
+  if (entries.length === 0) {
+    $grid.innerHTML = '';
+    $emptyState.classList.remove('hidden');
+
+    if (totalAll === 0) {
+      $emptyHeading.textContent = 'No bookmarks yet';
+      $emptyDesc.textContent = 'Visit a page and bookmark it via the extension or Chrome to get started.';
+    } else {
+      $emptyHeading.textContent = 'No results found';
+      $emptyDesc.textContent = 'Try adjusting your search or filter.';
+    }
+    return;
+  }
+
+  $emptyState.classList.add('hidden');
+
+  $grid.innerHTML = entries.map((bm, i) => {
+    const tasks = bm.tasks;
+    const done = tasks.filter(t => t.done).length;
+    const pending = tasks.length - done;
+    const hasNotes = bm.notes.trim().length > 0;
+
+    // Try to get favicon from Google's service
+    let faviconUrl = '';
+    try {
+      const domain = new URL(bm.url).origin;
+      faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+    } catch {}
+
+    const favicon = faviconUrl
+      ? `<img src="${escapeAttr(faviconUrl)}" alt="">`
+      : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`;
+
+    return `
+      <div class="bookmark-card" data-url="${escapeAttr(bm.url)}" data-id="${bm.id}" style="animation-delay: ${i * 0.04}s">
+        <div class="card-favicon">${favicon}</div>
+        <div class="card-body">
+          <div class="card-title">${escapeHtml(bm.title)}</div>
+          <div class="card-url">${escapeHtml(bm.url)}</div>
+          ${hasNotes ? `<div class="card-notes-preview">${escapeHtml(bm.notes)}</div>` : ''}
+          <div class="card-tags">
+            ${tasks.length > 0 ? `<span class="card-tag tag-tasks">${pending} pending</span>` : ''}
+            ${done > 0 ? `<span class="card-tag tag-done">${done} done</span>` : ''}
+            <span class="card-tag tag-date">${timeAgo(bm.updatedAt || bm.dateAdded)}</span>
+          </div>
+        </div>
+        <div class="card-open">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---- Events ----
+function bindEvents() {
+  $searchInput.addEventListener('input', () => {
+    searchQuery = $searchInput.value.trim();
+    renderGrid();
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      $searchInput.focus();
+    }
+    if (e.key === 'Escape' && !$overlay.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  $filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      $filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      renderGrid();
+    });
+  });
+
+  // Card click -> open modal
+  $grid.addEventListener('click', e => {
+    const card = e.target.closest('.bookmark-card');
+    if (!card) return;
+    openModal(card.dataset.url, card.dataset.id);
+  });
+
+  $modalClose.addEventListener('click', closeModal);
+  $overlay.addEventListener('click', e => {
+    if (e.target === $overlay) closeModal();
+  });
+
+  // Save
+  $modalSave.addEventListener('click', () => {
+    if (!editingUrl) return;
+    if (!pageData[editingUrl]) {
+      pageData[editingUrl] = { notes: '', tasks: [], updatedAt: Date.now() };
+    }
+    pageData[editingUrl].notes = $modalNotes.value;
+    pageData[editingUrl].tasks = editingData.tasks;
+    pageData[editingUrl].updatedAt = Date.now();
+    savePageData();
+    closeModal();
+    renderGrid();
+  });
+
+  // Delete (removes native bookmark + data)
+  $modalDelete.addEventListener('click', async () => {
+    if (!editingUrl || !editingBookmarkId) return;
+    try {
+      await new Promise(resolve => chrome.bookmarks.remove(editingBookmarkId, resolve));
+    } catch {}
+    delete pageData[editingUrl];
+    await savePageData();
+    await loadNativeBookmarks();
+    closeModal();
+    renderGrid();
+  });
+
+  // Add task in modal
+  $modalTaskInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && $modalTaskInput.value.trim()) {
+      editingData.tasks.push({
+        id: generateId(),
+        text: $modalTaskInput.value.trim(),
+        done: false,
+        createdAt: Date.now()
+      });
+      $modalTaskInput.value = '';
+      renderModalTasks();
+    }
+  });
+
+  // Task actions in modal
+  $modalTasks.addEventListener('click', e => {
+    const cb = e.target.closest('.modal-task-checkbox');
+    const del = e.target.closest('.modal-task-delete');
+    if (cb) {
+      const task = editingData.tasks.find(t => t.id === cb.dataset.id);
+      if (task) { task.done = !task.done; renderModalTasks(); }
+    } else if (del) {
+      editingData.tasks = editingData.tasks.filter(t => t.id !== del.dataset.id);
+      renderModalTasks();
+    }
+  });
+}
+
+// ---- Modal ----
+function openModal(url, bookmarkId) {
+  editingUrl = url;
+  editingBookmarkId = bookmarkId;
+
+  const bm = nativeBookmarks.find(b => b.url === url);
+  const data = pageData[url] || { notes: '', tasks: [] };
+  editingData = { tasks: JSON.parse(JSON.stringify(data.tasks || [])) };
+
+  $modalTitle.textContent = bm ? bm.title : 'Untitled';
+  $modalUrl.textContent = url;
+  $modalUrl.href = url;
+  $modalNotes.value = data.notes || '';
+
+  let faviconUrl = '';
+  try {
+    const domain = new URL(url).origin;
+    faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+  } catch {}
+
+  if (faviconUrl) {
+    $modalFavicon.innerHTML = `<img src="${escapeAttr(faviconUrl)}" alt="">`;
+  } else {
+    $modalFavicon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`;
+  }
+
+  renderModalTasks();
+  $overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  $overlay.classList.add('hidden');
+  document.body.style.overflow = '';
+  editingUrl = null;
+  editingBookmarkId = null;
+  editingData = null;
+}
+
+function renderModalTasks() {
+  if (!editingData) return;
+
+  $modalTasks.innerHTML = editingData.tasks.map(task => `
+    <li class="modal-task-item${task.done ? ' completed' : ''}">
+      <input type="checkbox" class="modal-task-checkbox" ${task.done ? 'checked' : ''} data-id="${task.id}">
+      <span class="modal-task-text">${escapeHtml(task.text)}</span>
+      <button class="modal-task-delete" data-id="${task.id}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </li>
+  `).join('');
+}
+
+// ---- Helpers ----
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const seconds = Math.floor((Date.now() - ts) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}

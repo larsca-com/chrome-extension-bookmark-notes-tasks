@@ -3,7 +3,7 @@
   "name": "Bookmark Notes & Tasks",
   "version": "1.0.0",
   "description": "Bookmark pages, take notes, and manage tasks — beautifully.",
-  "permissions": ["storage", "activeTab", "tabs", "bookmarks"],
+  "permissions": ["storage", "tabs", "bookmarks", "favicon"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

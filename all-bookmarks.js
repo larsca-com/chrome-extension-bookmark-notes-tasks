@@ -163,11 +163,10 @@ function renderGrid() {
     const pending = tasks.length - done;
     const hasNotes = bm.notes.trim().length > 0;
 
-    // Try to get favicon from Google's service
+    // Favicon from Chrome's local cache via the built-in favicon API (no network request)
     let faviconUrl = '';
     try {
-      const domain = new URL(bm.url).origin;
-      faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+      faviconUrl = faviconURL(bm.url);
     } catch {}
 
     const favicon = faviconUrl
@@ -178,19 +177,33 @@ function renderGrid() {
       <div class="bookmark-card" data-url="${escapeAttr(bm.url)}" data-id="${bm.id}" style="animation-delay: ${i * 0.04}s">
         <div class="card-favicon">${favicon}</div>
         <div class="card-body">
-          <div class="card-title">${escapeHtml(bm.title)}</div>
-          <div class="card-url">${escapeHtml(bm.url)}</div>
-          ${hasNotes ? `<div class="card-notes-preview">${escapeHtml(bm.notes)}</div>` : ''}
+          <div class="card-title" title="Click to expand">${escapeHtml(bm.title)}</div>
+          <div class="card-url" title="Click to expand">${escapeHtml(bm.url)}</div>
+          ${hasNotes ? `
+          <div class="card-notes-preview">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            <span class="card-notes-text">${escapeHtml(bm.notes)}</span>
+          </div>` : ''}
           <div class="card-tags">
             ${tasks.length > 0 ? `<span class="card-tag tag-tasks">${pending} pending</span>` : ''}
             ${done > 0 ? `<span class="card-tag tag-done">${done} done</span>` : ''}
             <span class="card-tag tag-date">${timeAgo(bm.updatedAt || bm.dateAdded)}</span>
           </div>
         </div>
-        <div class="card-open">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18l6-6-6-6"/>
-          </svg>
+        <div class="card-actions">
+          <button class="card-remove" data-id="${bm.id}" title="Remove bookmark">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+          <div class="card-open">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
         </div>
       </div>
     `;
@@ -223,10 +236,32 @@ function bindEvents() {
     });
   });
 
-  // Card click -> open modal
+  // Card click -> remove / expand / open modal
   $grid.addEventListener('click', e => {
     const card = e.target.closest('.bookmark-card');
     if (!card) return;
+
+    const removeBtn = e.target.closest('.card-remove');
+    if (removeBtn) {
+      if (!removeBtn.classList.contains('confirm')) {
+        removeBtn.classList.add('confirm');
+        removeBtn.title = 'Click again to confirm';
+        setTimeout(() => {
+          removeBtn.classList.remove('confirm');
+          removeBtn.title = 'Remove bookmark';
+        }, 2500);
+        return;
+      }
+      removeBookmark(card.dataset.id, card.dataset.url);
+      return;
+    }
+
+    // Clicking title/url toggles full-text expansion instead of opening the modal
+    if (e.target.closest('.card-title, .card-url')) {
+      card.classList.toggle('expanded');
+      return;
+    }
+
     openModal(card.dataset.url, card.dataset.id);
   });
 
@@ -252,14 +287,10 @@ function bindEvents() {
   // Delete (removes native bookmark + data)
   $modalDelete.addEventListener('click', async () => {
     if (!editingUrl || !editingBookmarkId) return;
-    try {
-      await new Promise(resolve => chrome.bookmarks.remove(editingBookmarkId, resolve));
-    } catch {}
-    delete pageData[editingUrl];
-    await savePageData();
-    await loadNativeBookmarks();
+    const id = editingBookmarkId;
+    const url = editingUrl;
     closeModal();
-    renderGrid();
+    await removeBookmark(id, url);
   });
 
   // Add task in modal
@@ -290,6 +321,17 @@ function bindEvents() {
   });
 }
 
+// ---- Remove bookmark (native bookmark + stored notes/tasks) ----
+async function removeBookmark(bookmarkId, url) {
+  try {
+    await new Promise(resolve => chrome.bookmarks.remove(bookmarkId, resolve));
+  } catch {}
+  delete pageData[url];
+  await savePageData();
+  await loadNativeBookmarks();
+  renderGrid();
+}
+
 // ---- Modal ----
 function openModal(url, bookmarkId) {
   editingUrl = url;
@@ -306,8 +348,7 @@ function openModal(url, bookmarkId) {
 
   let faviconUrl = '';
   try {
-    const domain = new URL(url).origin;
-    faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+    faviconUrl = faviconURL(url);
   } catch {}
 
   if (faviconUrl) {
@@ -348,6 +389,14 @@ function renderModalTasks() {
 // ---- Helpers ----
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+// Build a favicon URL served locally by Chrome's favicon API (no third-party request).
+function faviconURL(pageUrl, size = 32) {
+  const u = new URL(chrome.runtime.getURL('/_favicon/'));
+  u.searchParams.set('pageUrl', pageUrl);
+  u.searchParams.set('size', String(size));
+  return u.toString();
 }
 
 function escapeHtml(str) {

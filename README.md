@@ -16,6 +16,10 @@ tracking, and no network requests - the extension works fully offline.
 - **Notes** on any bookmark - a summary, a quote, a reminder.
 - **Task checklists** on any bookmark, with pending/done tracking.
 - **Full-page dashboard** listing every bookmark, note, and task together.
+- **Open in a new tab** from any dashboard card or bookmark detail view (the
+  open button, or click the URL).
+- **Export JSON**: download every bookmark with its notes, tasks, and
+  timestamps as one `bookmark-notes-YYYY-MM-DD.json` file, generated locally.
 - **Instant search** across bookmarks, notes, and tasks (`Ctrl+K`).
 - **Filters**: All, With Notes, With Tasks, Pending Tasks.
 - **Remove** a bookmark - and its notes and tasks - when you are finished.

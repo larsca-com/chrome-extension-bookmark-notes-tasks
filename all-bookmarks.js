@@ -15,6 +15,7 @@ const $emptyDesc    = document.getElementById('empty-desc');
 const $total        = document.getElementById('bookmark-total');
 const $searchInput  = document.getElementById('search-input');
 const $filterBtns   = document.querySelectorAll('.filter-btn');
+const $exportJson   = document.getElementById('export-json');
 
 // Modal refs
 const $overlay        = document.getElementById('modal-overlay');
@@ -22,6 +23,7 @@ const $modalClose     = document.getElementById('modal-close');
 const $modalTitle     = document.getElementById('modal-page-title');
 const $modalUrl       = document.getElementById('modal-page-url');
 const $modalFavicon   = document.getElementById('modal-favicon');
+const $modalOpen      = document.getElementById('modal-open');
 const $modalNotes     = document.getElementById('modal-notes');
 const $modalTasks     = document.getElementById('modal-task-list');
 const $modalTaskInput = document.getElementById('modal-task-input');
@@ -178,7 +180,7 @@ function renderGrid() {
         <div class="card-favicon">${favicon}</div>
         <div class="card-body">
           <div class="card-title" title="Click to expand">${escapeHtml(bm.title)}</div>
-          <div class="card-url" title="Click to expand">${escapeHtml(bm.url)}</div>
+          <a class="card-url" href="${escapeAttr(bm.url)}" target="_blank" rel="noopener" title="Open in new tab">${escapeHtml(bm.url)}</a>
           ${hasNotes ? `
           <div class="card-notes-preview">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -194,6 +196,13 @@ function renderGrid() {
           </div>
         </div>
         <div class="card-actions">
+          <button class="card-visit" title="Open in new tab" aria-label="Open in new tab">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <path d="M15 3h6v6"/>
+              <path d="M10 14L21 3"/>
+            </svg>
+          </button>
           <button class="card-remove" data-id="${bm.id}" title="Remove bookmark">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -236,10 +245,18 @@ function bindEvents() {
     });
   });
 
-  // Card click -> remove / expand / open modal
+  $exportJson.addEventListener('click', exportJson);
+
+  // Card click -> open page / remove / expand / open modal
   $grid.addEventListener('click', e => {
     const card = e.target.closest('.bookmark-card');
     if (!card) return;
+
+    if (e.target.closest('.card-visit, .card-url')) {
+      e.preventDefault();
+      openInNewTab(card.dataset.url, e);
+      return;
+    }
 
     const removeBtn = e.target.closest('.card-remove');
     if (removeBtn) {
@@ -256,8 +273,8 @@ function bindEvents() {
       return;
     }
 
-    // Clicking title/url toggles full-text expansion instead of opening the modal
-    if (e.target.closest('.card-title, .card-url')) {
+    // Clicking the title toggles full-text expansion instead of opening the modal
+    if (e.target.closest('.card-title')) {
       card.classList.toggle('expanded');
       return;
     }
@@ -266,6 +283,11 @@ function bindEvents() {
   });
 
   $modalClose.addEventListener('click', closeModal);
+  $modalOpen.addEventListener('click', e => openInNewTab(editingUrl, e));
+  $modalUrl.addEventListener('click', e => {
+    e.preventDefault();
+    openInNewTab(editingUrl, e);
+  });
   $overlay.addEventListener('click', e => {
     if (e.target === $overlay) closeModal();
   });
@@ -330,6 +352,60 @@ async function removeBookmark(bookmarkId, url) {
   await savePageData();
   await loadNativeBookmarks();
   renderGrid();
+}
+
+// ---- Open bookmark ----
+// Ctrl/Cmd-click opens the page in a background tab, like a regular link.
+function openInNewTab(url, e) {
+  if (!url) return;
+  const background = !!e && (e.ctrlKey || e.metaKey);
+  chrome.tabs.create({ url, active: !background });
+}
+
+// ---- Export ----
+// Downloads every bookmark with its notes and tasks as one JSON file.
+// Built from a local blob, so it needs no extra permission and no network.
+function exportJson() {
+  const toIso = ts => (ts ? new Date(ts).toISOString() : null);
+
+  const bookmarks = getMergedBookmarks()
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .map(bm => ({
+      title: bm.title,
+      url: bm.url,
+      notes: bm.notes,
+      tasks: bm.tasks.map(t => ({
+        text: t.text,
+        done: !!t.done,
+        createdAt: toIso(t.createdAt)
+      })),
+      dateAdded: toIso(bm.dateAdded),
+      updatedAt: toIso(pageData[bm.url] && pageData[bm.url].updatedAt)
+    }));
+
+  const payload = {
+    source: 'Bookmark Notes & Tasks',
+    version: chrome.runtime.getManifest().version,
+    exportedAt: new Date().toISOString(),
+    count: bookmarks.length,
+    bookmarks
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' });
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = `bookmark-notes-${localDateStamp()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 1000);
+}
+
+function localDateStamp() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 // ---- Modal ----

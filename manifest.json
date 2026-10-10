@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bookmark Notes & Tasks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bookmark pages, take notes, and manage tasks — beautifully.",
   "permissions": ["storage", "tabs", "bookmarks", "favicon"],
   "action": {

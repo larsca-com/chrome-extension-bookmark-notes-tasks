@@ -83,13 +83,14 @@ popup.html/.css/.js      Toolbar popup (bookmark the current page)
 all-bookmarks.html/.css/.js  Full-page dashboard
 theme.css / theme.js     Dark + light color tokens and the System / Light / Dark switch
 icons/                   16 / 48 / 128 px icons
-fonts/                   Self-hosted DM Sans + DM Serif Display (woff2) + OFL.txt
+fonts/                   Self-hosted DM Sans + Playfair Display (woff2) + OFL licenses
 store-assets/            Store listing copy, privacy policy, screenshots, submit guide
 scripts/build-zip.sh     Builds the Web Store upload zip
 ```
 
 ## License
 
-The bundled fonts (DM Sans and DM Serif Display) are licensed under the SIL Open
-Font License 1.1 - see [`fonts/OFL.txt`](fonts/OFL.txt). The extension itself is
-© LARSCA.
+The bundled fonts (DM Sans and Playfair Display) are licensed under the SIL Open
+Font License 1.1 - see [`fonts/OFL.txt`](fonts/OFL.txt) and
+[`fonts/OFL-PlayfairDisplay.txt`](fonts/OFL-PlayfairDisplay.txt). The extension
+itself is © LARSCA.

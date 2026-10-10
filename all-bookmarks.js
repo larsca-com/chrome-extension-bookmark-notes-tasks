@@ -16,6 +16,7 @@ const $total        = document.getElementById('bookmark-total');
 const $searchInput  = document.getElementById('search-input');
 const $filterBtns   = document.querySelectorAll('.filter-btn');
 const $exportJson   = document.getElementById('export-json');
+const $exportLabel  = document.getElementById('export-label');
 
 // Modal refs
 const $overlay        = document.getElementById('modal-overlay');
@@ -147,6 +148,7 @@ function renderGrid({ animate = false } = {}) {
   const totalAll = nativeBookmarks.length;
 
   renderTotal();
+  renderExportButton(entries.length);
 
   if (entries.length === 0) {
     $grid.innerHTML = '';
@@ -367,6 +369,7 @@ async function removeBookmark(bookmarkId, url) {
   nativeBookmarks = nativeBookmarks.filter(bm => bm.id !== bookmarkId);
   await savePageData();
   renderTotal();
+  renderExportButton(getFilteredBookmarks().length);
 
   const card = [...$grid.querySelectorAll('.bookmark-card')]
     .find(c => c.dataset.id === bookmarkId);
@@ -408,13 +411,34 @@ function openInNewTab(url, e) {
 }
 
 // ---- Export ----
-// Downloads every bookmark with its notes and tasks as one JSON file.
+// Exports what the dashboard shows: everything, or only the bookmarks matching
+// the active filter and search. The button label says which.
+function isFiltered() {
+  return activeFilter !== 'all' || searchQuery !== '';
+}
+
+function renderExportButton(shownCount) {
+  if (!isFiltered()) {
+    $exportLabel.textContent = 'Export JSON';
+    $exportJson.title = 'Download all bookmarks with their notes and tasks as a JSON file';
+    $exportJson.disabled = false;
+    return;
+  }
+  const noun = `bookmark${shownCount !== 1 ? 's' : ''}`;
+  $exportLabel.textContent = `Export JSON (${shownCount} shown)`;
+  $exportJson.title = shownCount > 0
+    ? `Download the ${shownCount} ${noun} matching the current filter and search as a JSON file. Choose All and clear the search to export everything.`
+    : 'No bookmarks match the current filter and search';
+  $exportJson.disabled = shownCount === 0;
+}
+
+// Downloads the shown bookmarks with their notes and tasks as one JSON file.
 // Built from a local blob, so it needs no extra permission and no network.
 function exportJson() {
   const toIso = ts => (ts ? new Date(ts).toISOString() : null);
+  const filtered = isFiltered();
 
-  const bookmarks = getMergedBookmarks()
-    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+  const bookmarks = getFilteredBookmarks()
     .map(bm => ({
       title: bm.title,
       url: bm.url,
@@ -432,7 +456,11 @@ function exportJson() {
     source: 'Bookmark Notes & Tasks',
     version: chrome.runtime.getManifest().version,
     exportedAt: new Date().toISOString(),
+    scope: filtered ? 'shown' : 'all',
+    filter: activeFilter,
+    search: searchQuery,
     count: bookmarks.length,
+    total: nativeBookmarks.length,
     bookmarks
   };
 
@@ -440,7 +468,7 @@ function exportJson() {
   const href = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = href;
-  a.download = `bookmark-notes-${localDateStamp()}.json`;
+  a.download = `bookmark-notes-${localDateStamp()}${filtered ? '-filtered' : ''}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();

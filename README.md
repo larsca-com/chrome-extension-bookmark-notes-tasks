@@ -23,6 +23,8 @@ tracking, and no network requests - the extension works fully offline.
 - **Instant search** across bookmarks, notes, and tasks (`Ctrl+K`).
 - **Filters**: All, With Notes, With Tasks, Pending Tasks.
 - **Remove** a bookmark - and its notes and tasks - when you are finished.
+- **Light and dark themes**: follows your system setting by default, or pick
+  System / Light / Dark from the dashboard nav or the popup settings.
 
 ## Install
 
@@ -36,20 +38,22 @@ The extension will be available on the Chrome Web Store (listing pending review)
 
 ## Build the Web Store package
 
-From the repository root:
+1. Bump the `version` in `manifest.json` (every upload of an already-published
+   item needs a higher version).
+2. From the repository root, run:
 
-```sh
-zip -r bookmark-notes-tasks-v1.0.0.zip \
-  manifest.json \
-  popup.html popup.css popup.js \
-  all-bookmarks.html all-bookmarks.css all-bookmarks.js \
-  icons \
-  fonts \
-  -x '*.DS_Store'
-```
+   ```sh
+   scripts/build-zip.sh
+   ```
 
-Bump the `version` in `manifest.json` for every new upload of an already-published
-item. Store listing copy, screenshots, and a submission guide live in
+   It writes `dist/bookmark-notes-tasks-v<version>.zip` (pass another output
+   directory as the first argument) and prints its path. Only the tracked
+   runtime files are packaged: the manifest, the popup and dashboard pages,
+   `theme.css`/`theme.js`, `icons/`, and `fonts/`.
+3. Upload that zip in the Chrome Web Store Developer Dashboard (Package tab,
+   **Upload new package**), then submit for review.
+
+Store listing copy, screenshots, and a submission guide live in
 [`store-assets/`](store-assets/).
 
 ## Permissions
@@ -77,9 +81,11 @@ Full policy: https://larsca.com/legal/bookmark-notes-tasks/privacy
 manifest.json            MV3 manifest
 popup.html/.css/.js      Toolbar popup (bookmark the current page)
 all-bookmarks.html/.css/.js  Full-page dashboard
+theme.css / theme.js     Dark + light color tokens and the System / Light / Dark switch
 icons/                   16 / 48 / 128 px icons
 fonts/                   Self-hosted DM Sans + DM Serif Display (woff2) + OFL.txt
 store-assets/            Store listing copy, privacy policy, screenshots, submit guide
+scripts/build-zip.sh     Builds the Web Store upload zip
 ```
 
 ## License

@@ -286,15 +286,37 @@ body::before {
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--transition);
-  animation: card-enter 0.35s ease forwards;
-  opacity: 0;
-  transform: translateY(8px);
+}
+
+/* Entrance stagger: first render only (see renderGrid). `backwards` holds the
+   hidden frame during the delay; once it ends the card rests fully visible. */
+.bookmark-card.entering {
+  animation: card-enter 0.35s ease backwards;
 }
 
 @keyframes card-enter {
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Delete: collapse only the removed card. The negative margin absorbs the
+   grid gap so the cards below slide up smoothly. */
+.bookmark-card.removing {
+  height: 0 !important;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: -10px;
+  border-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bookmark-card.entering {
+    animation: none;
   }
 }
 

@@ -20,6 +20,9 @@ tracking, and no network requests - the extension works fully offline.
   open button, or click the URL).
 - **Export JSON**: download every bookmark with its notes, tasks, and
   timestamps as one `bookmark-notes-YYYY-MM-DD.json` file, generated locally.
+  With a filter or search active, the button reads "Export JSON (N shown)" and
+  exports only those bookmarks to `bookmark-notes-YYYY-MM-DD-filtered.json`,
+  recording the filter and search in the file.
 - **Instant search** across bookmarks, notes, and tasks (`Ctrl+K`).
 - **Filters**: All, With Notes, With Tasks, Pending Tasks.
 - **Remove** a bookmark - and its notes and tasks - when you are finished.

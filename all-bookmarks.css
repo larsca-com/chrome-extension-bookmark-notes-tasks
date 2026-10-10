@@ -125,10 +125,15 @@ body::before {
   white-space: nowrap;
 }
 
-.nav-btn:hover {
+.nav-btn:hover:not(:disabled) {
   color: var(--accent);
   background: var(--accent-subtle);
   border-color: var(--accent-border);
+}
+
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* same trick as .nav-btn: the switch must not grow the nav */

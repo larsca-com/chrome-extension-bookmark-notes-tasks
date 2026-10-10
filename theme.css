@@ -1,0 +1,148 @@
+/* ============================================
+   Color themes - shared by the popup and the dashboard
+   Dark is the default; theme.js sets data-theme on <html> from the saved
+   choice (System / Light / Dark) before first paint.
+   ============================================ */
+
+:root {
+  color-scheme: dark;
+
+  --bg-primary: #1a1714;
+  --bg-secondary: #231f1b;
+  --bg-tertiary: #2c2722;
+  --bg-elevated: #342e28;
+  --bg-hover: #3d362f;
+  --bg-card: #211e1a;
+
+  --text-primary: #f0e8df;
+  --text-secondary: #b8a99a;
+  --text-tertiary: #8a7b6c;
+  --text-muted: #5e5248;
+
+  --accent: #e8a44a;
+  --accent-hover: #f0b560;
+  --accent-deep: #d4943e;
+  --accent-subtle: rgba(232, 164, 74, 0.12);
+  --accent-glow: rgba(232, 164, 74, 0.25);
+  --accent-border: rgba(232, 164, 74, 0.15);
+  --accent-shadow: rgba(232, 164, 74, 0.3);
+  --accent-shadow-strong: rgba(232, 164, 74, 0.4);
+  --on-accent: #1a1714;
+
+  --success: #6cbf7f;
+  --success-subtle: rgba(108, 191, 127, 0.12);
+  --danger: #d46b6b;
+  --danger-subtle: rgba(212, 107, 107, 0.1);
+  --danger-border: rgba(212, 107, 107, 0.3);
+  --on-danger: #fff;
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.09);
+  --border-focus: rgba(232, 164, 74, 0.4);
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.5);
+  --shadow-xl: 0 16px 50px rgba(0,0,0,0.6);
+
+  --nav-bg: rgba(26, 23, 20, 0.85);
+  --toolbar-bg: rgba(26, 23, 20, 0.7);
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --page-glow-1: rgba(232, 164, 74, 0.04);
+  --page-glow-2: rgba(232, 164, 74, 0.03);
+}
+
+/* Light: warm paper with the same amber identity. The accent is a deeper
+   amber here so it keeps >= 4.5:1 as text on the paper backgrounds. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-primary: #f7f2ea;
+  --bg-secondary: #fffcf7;
+  --bg-tertiary: #efe7db;
+  --bg-elevated: #e6dccd;
+  --bg-hover: #ddd0be;
+  --bg-card: #fffdf9;
+
+  --text-primary: #2b231c;
+  --text-secondary: #5a4b3e;
+  --text-tertiary: #6f5f51;
+  --text-muted: #8a7a6b;
+
+  --accent: #93570c;
+  --accent-hover: #7a4808;
+  --accent-deep: #7a4808;
+  --accent-subtle: rgba(147, 87, 12, 0.1);
+  --accent-glow: rgba(147, 87, 12, 0.2);
+  --accent-border: rgba(147, 87, 12, 0.22);
+  --accent-shadow: rgba(147, 87, 12, 0.25);
+  --accent-shadow-strong: rgba(147, 87, 12, 0.35);
+  --on-accent: #fffaf2;
+
+  --success: #2a7040;
+  --success-subtle: rgba(42, 112, 64, 0.1);
+  --danger: #b0413f;
+  --danger-subtle: rgba(176, 65, 63, 0.08);
+  --danger-border: rgba(176, 65, 63, 0.3);
+  --on-danger: #fff;
+
+  --border: rgba(80, 52, 24, 0.12);
+  --border-hover: rgba(80, 52, 24, 0.2);
+  --border-focus: rgba(147, 87, 12, 0.45);
+
+  --shadow-sm: 0 1px 3px rgba(80, 52, 24, 0.08);
+  --shadow-md: 0 4px 12px rgba(80, 52, 24, 0.1);
+  --shadow-lg: 0 8px 30px rgba(80, 52, 24, 0.14);
+  --shadow-xl: 0 16px 50px rgba(80, 52, 24, 0.18);
+
+  --nav-bg: rgba(247, 242, 234, 0.85);
+  --toolbar-bg: rgba(247, 242, 234, 0.72);
+  --overlay-bg: rgba(43, 35, 28, 0.35);
+  --page-glow-1: rgba(147, 87, 12, 0.05);
+  --page-glow-2: rgba(147, 87, 12, 0.04);
+}
+
+/* ---- Theme switch (System / Light / Dark segmented control) ---- */
+
+.theme-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.theme-opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 24px;
+  min-width: 26px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-opt:hover {
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+}
+
+.theme-opt.active {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.theme-opt:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}

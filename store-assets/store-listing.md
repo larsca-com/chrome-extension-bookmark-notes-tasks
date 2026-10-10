@@ -12,7 +12,7 @@ Bookmark Notes & Tasks
 
 ## Summary (short description, max 132 chars)
 
-Save any page as a bookmark, attach private notes and to-do tasks, then search and filter it all from one calm dark dashboard.
+Save any page as a bookmark, attach private notes and to-do tasks, then search and filter it all from one calm dashboard.
 
 ## Category
 
@@ -45,7 +45,8 @@ WHAT YOU CAN DO
 WHY YOU MIGHT LIKE IT
 - Everything is stored locally in your browser. There is no account, no sign-up,
   and no sync server.
-- A quiet, focused dark interface that stays out of your way.
+- A quiet, focused interface in dark or light that follows your system
+  setting, or pick a theme yourself.
 - Works alongside Chrome's own bookmarks rather than replacing them.
 
 Bookmark Notes & Tasks is ideal for research, reading lists, and any workflow

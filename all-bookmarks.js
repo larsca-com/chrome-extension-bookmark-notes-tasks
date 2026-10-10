@@ -42,7 +42,7 @@ let editingData = null;
 document.addEventListener('DOMContentLoaded', async () => {
   await loadPageData();
   await loadNativeBookmarks();
-  renderGrid();
+  renderGrid({ animate: true });
   bindEvents();
 });
 
@@ -137,11 +137,16 @@ function getFilteredBookmarks() {
 }
 
 // ---- Render ----
-function renderGrid() {
+// Only the first render staggers cards in, and only the first screenful of
+// them. Re-renders after a save, filter or search swap the cards in place,
+// so nothing below the fold starts out invisible.
+const ENTER_STAGGER_LIMIT = 12;
+
+function renderGrid({ animate = false } = {}) {
   const entries = getFilteredBookmarks();
   const totalAll = nativeBookmarks.length;
 
-  $total.textContent = `${totalAll} bookmark${totalAll !== 1 ? 's' : ''}`;
+  renderTotal();
 
   if (entries.length === 0) {
     $grid.innerHTML = '';
@@ -175,8 +180,11 @@ function renderGrid() {
       ? `<img src="${escapeAttr(faviconUrl)}" alt="">`
       : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`;
 
+    const enter = animate && i < ENTER_STAGGER_LIMIT;
+    const enterAttrs = enter ? ` style="animation-delay: ${i * 0.04}s"` : '';
+
     return `
-      <div class="bookmark-card" data-url="${escapeAttr(bm.url)}" data-id="${bm.id}" style="animation-delay: ${i * 0.04}s">
+      <div class="bookmark-card${enter ? ' entering' : ''}" data-url="${escapeAttr(bm.url)}" data-id="${bm.id}"${enterAttrs}>
         <div class="card-favicon">${favicon}</div>
         <div class="card-body">
           <div class="card-title" title="Click to expand">${escapeHtml(bm.title)}</div>
@@ -217,6 +225,11 @@ function renderGrid() {
       </div>
     `;
   }).join('');
+}
+
+function renderTotal() {
+  const totalAll = nativeBookmarks.length;
+  $total.textContent = `${totalAll} bookmark${totalAll !== 1 ? 's' : ''}`;
 }
 
 // ---- Events ----
@@ -344,14 +357,46 @@ function bindEvents() {
 }
 
 // ---- Remove bookmark (native bookmark + stored notes/tasks) ----
+// Removes just that card instead of re-rendering the list, so the rest of
+// the page and the scroll position stay put.
 async function removeBookmark(bookmarkId, url) {
   try {
     await new Promise(resolve => chrome.bookmarks.remove(bookmarkId, resolve));
   } catch {}
   delete pageData[url];
+  nativeBookmarks = nativeBookmarks.filter(bm => bm.id !== bookmarkId);
   await savePageData();
-  await loadNativeBookmarks();
-  renderGrid();
+  renderTotal();
+
+  const card = [...$grid.querySelectorAll('.bookmark-card')]
+    .find(c => c.dataset.id === bookmarkId);
+  if (card) await collapseCard(card);
+
+  // Another bookmark of the same URL just lost its notes/tasks, and an empty
+  // list needs the empty state: both need a (non-animated) re-render.
+  const sameUrlLeft = nativeBookmarks.some(bm => bm.url === url);
+  if (sameUrlLeft || !$grid.querySelector('.bookmark-card')) renderGrid();
+}
+
+function collapseCard(card) {
+  return new Promise(resolve => {
+    const finish = () => {
+      card.remove();
+      resolve();
+    };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      finish();
+      return;
+    }
+    // Pin the current height so the collapse can transition from it
+    card.style.height = `${card.offsetHeight}px`;
+    void card.offsetHeight;
+    card.classList.add('removing');
+    card.addEventListener('transitionend', e => {
+      if (e.target === card && e.propertyName === 'height') finish();
+    });
+    setTimeout(() => card.isConnected && finish(), 400);
+  });
 }
 
 // ---- Open bookmark ----

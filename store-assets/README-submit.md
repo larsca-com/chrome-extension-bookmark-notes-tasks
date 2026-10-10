@@ -9,13 +9,13 @@
   into the Privacy tab.
 - `screenshots/` - three 1280x800 PNG screenshots, ready to upload.
 
-The package itself is `bookmark-notes-tasks-v1.0.0.zip` in the repo root
-(regenerate any time with the command in "Rebuild the package" below).
+The package itself is built by `scripts/build-zip.sh` into
+`dist/bookmark-notes-tasks-v<version>.zip` (see "Rebuild the package" below).
 
 ## Step by step
 
-1. On the "Add new item" screen, click **Select file** and choose
-   `bookmark-notes-tasks-v1.0.0.zip`.
+1. On the "Add new item" screen (or, for an update, the item's **Package** tab
+   and **Upload new package**), choose `dist/bookmark-notes-tasks-v<version>.zip`.
 2. **Store listing** tab: paste the product name, summary, and detailed
    description from `store-listing.md`; set category to Productivity and language
    to English. Upload the three images from `screenshots/`.
@@ -52,16 +52,12 @@ deploy larsca-w3 before submitting.
 
 ## Rebuild the package
 
-From the repo root:
-
-```
-zip -r bookmark-notes-tasks-v1.0.0.zip \
-  manifest.json \
-  popup.html popup.css popup.js \
-  all-bookmarks.html all-bookmarks.css all-bookmarks.js \
-  icons \
-  -x '*.DS_Store'
-```
-
 Bump the `version` in manifest.json for every new upload of an already-published
-item.
+item, then from the repo root:
+
+```
+scripts/build-zip.sh
+```
+
+It packages only the tracked runtime files (manifest, popup and dashboard
+pages, theme files, icons, fonts) and prints the zip path.

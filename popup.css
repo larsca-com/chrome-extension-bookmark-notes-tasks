@@ -4,40 +4,13 @@
    ============================================ */
 
 :root {
-  /* Warm palette */
-  --bg-primary: #1a1714;
-  --bg-secondary: #231f1b;
-  --bg-tertiary: #2c2722;
-  --bg-elevated: #342e28;
-  --bg-hover: #3d362f;
-
-  --text-primary: #f0e8df;
-  --text-secondary: #b8a99a;
-  --text-tertiary: #8a7b6c;
-  --text-muted: #5e5248;
-
-  --accent: #e8a44a;
-  --accent-hover: #f0b560;
-  --accent-subtle: rgba(232, 164, 74, 0.12);
-  --accent-glow: rgba(232, 164, 74, 0.25);
-
-  --success: #6cbf7f;
-  --success-subtle: rgba(108, 191, 127, 0.12);
-  --danger: #d46b6b;
-  --danger-subtle: rgba(212, 107, 107, 0.1);
-
-  --border: rgba(255, 255, 255, 0.06);
-  --border-focus: rgba(232, 164, 74, 0.4);
-
+  /* Colors live in theme.css (dark + light) */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 30px rgba(0,0,0,0.5);
-
-  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-display-weight: 600;
   --font-body: 'DM Sans', -apple-system, sans-serif;
 
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -121,7 +94,7 @@ body {
 .logo-text {
   font-family: var(--font-display);
   font-size: 16px;
-  font-weight: 400;
+  font-weight: var(--font-display-weight);
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
@@ -240,6 +213,7 @@ body {
 
 .empty-text {
   font-family: var(--font-display);
+  font-weight: var(--font-display-weight);
   font-size: 16px;
   color: var(--text-primary);
   margin-bottom: 4px;
@@ -258,14 +232,14 @@ body {
   padding: 10px 20px;
   border: none;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--accent), #d4943e);
-  color: var(--bg-primary);
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  color: var(--on-accent);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition);
-  box-shadow: 0 2px 8px rgba(232, 164, 74, 0.3);
+  box-shadow: 0 2px 8px var(--accent-shadow);
   position: relative;
   overflow: hidden;
 }
@@ -281,7 +255,7 @@ body {
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(232, 164, 74, 0.4);
+  box-shadow: 0 4px 16px var(--accent-shadow-strong);
 }
 
 .btn-primary:hover::before {
@@ -434,7 +408,7 @@ body {
   top: 1px;
   width: 5px;
   height: 9px;
-  border: solid var(--bg-primary);
+  border: solid var(--on-accent);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -542,12 +516,22 @@ body {
 }
 
 .btn-remove:hover {
-  border-color: rgba(212, 107, 107, 0.3);
+  border-color: var(--danger-border);
   background: var(--danger-subtle);
   color: var(--danger);
 }
 
 /* ---- Settings Panel ---- */
+
+.theme-switch-wide {
+  display: flex;
+  margin-bottom: 4px;
+}
+
+.theme-switch-wide .theme-opt {
+  flex: 1;
+  height: 30px;
+}
 
 .settings-desc {
   font-size: 12.5px;
@@ -576,7 +560,7 @@ body {
 
 .btn-google:hover {
   background: var(--bg-tertiary);
-  border-color: rgba(255,255,255,0.1);
+  border-color: var(--border-hover);
 }
 
 .badge-phase {
